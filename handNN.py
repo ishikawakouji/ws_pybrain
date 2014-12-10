@@ -13,9 +13,9 @@ import csv
 
 def runNN():
     # data set CSV
-    _trncsv = 'case1_send1/inc_attr_30_train.csv'
-    _tstcsv = 'case1_send1/inc_attr_30_test.csv'
-    _attrnum = 30
+    _trncsv = '../ml_pybrain/case1_send1/inc_attr_30_train.csv'
+    _tstcsv = '../ml_pybrain/case1_send1/inc_attr_30_test.csv'
+    #_attrnum = 30 # attrnum is imput dim, get later auto
     _classnum = 2
     # num of hidden layer
     _hidden = 12
@@ -52,6 +52,8 @@ def runNN():
     train = [[float(elm) for elm in row[0:-1]] for row in data]
     # last col is target data set, convert from ONE start to ZERO start
     target = [[int(row[-1])-1] for row in data]
+    # get input dim
+    _attrnum = len(train[0])
     # set DataSet
     trndata = ClassificationDataSet(_attrnum, 1, nb_classes=_classnum)
     trndata.setField('input', train)
