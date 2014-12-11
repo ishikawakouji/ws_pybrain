@@ -10,6 +10,7 @@ from scipy import diag, arange, meshgrid, where
 from numpy.random import multivariate_normal
 
 import csv
+import time
 
 def runNN():
     # data set CSV
@@ -45,32 +46,33 @@ def runNN():
 
 
     ''' #read csv
-    # read train data
-    dictdata = csv.DictReader(open(_trncsv, 'r'))
-    data  = [[row[f] for f in dictdata.fieldnames] for row in dictdata]
-    # from 0th to last-1 col are training data set
-    train = [[float(elm) for elm in row[0:-1]] for row in data]
-    # last col is target data set, convert from ONE start to ZERO start
-    target = [[int(row[-1])-1] for row in data]
-    # get input dim
-    _attrnum = len(train[0])
-    # set DataSet
-    trndata = ClassificationDataSet(_attrnum, 1, nb_classes=_classnum)
-    trndata.setField('input', train)
-    trndata.setField('target', target)
+    with Timer() as readt:
+        # read train data
+        dictdata = csv.DictReader(open(_trncsv, 'r'))
+        data  = [[row[f] for f in dictdata.fieldnames] for row in dictdata]
+        # from 0th to last-1 col are training data set
+        train = [[float(elm) for elm in row[0:-1]] for row in data]
+        # last col is target data set, convert from ONE start to ZERO start
+        target = [[int(row[-1])-1] for row in data]
+        # get input dim
+        _attrnum = len(train[0])
+        # set DataSet
+        trndata = ClassificationDataSet(_attrnum, 1, nb_classes=_classnum)
+        trndata.setField('input', train)
+        trndata.setField('target', target)
 
-    # read test data
-    dictdata = None
-    dictdata = csv.DictReader(open(_tstcsv, 'r'))
-    data  = [[row[f] for f in dictdata.fieldnames] for row in dictdata]
-    # from 0th to last-1 col are training data set
-    train = [[float(elm) for elm in row[0:-1]] for row in data]
-    # last col is target data set, convert from ONE start to ZERO start
-    target = [[int(row[-1])-1] for row in data]
-    # set DataSet
-    tstdata = ClassificationDataSet(_attrnum, 1, nb_classes=_classnum)
-    tstdata.setField('input', train)
-    tstdata.setField('target', target)
+        # read test data
+        dictdata = None
+        dictdata = csv.DictReader(open(_tstcsv, 'r'))
+        data  = [[row[f] for f in dictdata.fieldnames] for row in dictdata]
+        # from 0th to last-1 col are training data set
+        train = [[float(elm) for elm in row[0:-1]] for row in data]
+        # last col is target data set, convert from ONE start to ZERO start
+        target = [[int(row[-1])-1] for row in data]
+        # set DataSet
+        tstdata = ClassificationDataSet(_attrnum, 1, nb_classes=_classnum)
+        tstdata.setField('input', train)
+        tstdata.setField('target', target)
 
     #'''
 
@@ -112,28 +114,32 @@ def runNN():
     tsty = []
 
     # start training
-    for i in range(_maxepochs):
-        # train
-        trainer.trainEpochs(1)
-        # test by train/test
-        trnresult = percentError(trainer.testOnClassData(), trndata['class'])
-        tstresult = percentError(trainer.testOnClassData(dataset=tstdata), tstdata['class'])
-        print "epoch: %4d" % trainer.totalepochs, \
-            "  train error: %5.2f%%" % trnresult, \
-            "  test error: %5.2f%%" % tstresult
-        # store curve
-        trainx.append(i+1)
-        trny.append(trnresult)
-        tsty.append(tstresult)
+    with Timer() as traint:
+        for i in range(_maxepochs):
+            # train
+            trainer.trainEpochs(1)
+            # test by train/test
+            trnresult = percentError(trainer.testOnClassData(), trndata['class'])
+            tstresult = percentError(trainer.testOnClassData(dataset=tstdata), tstdata['class'])
+            print "epoch: %4d" % trainer.totalepochs, \
+                "  train error: %5.2f%%" % trnresult, \
+                "  test error: %5.2f%%" % tstresult
+            # store curve
+            trainx.append(i+1)
+            trny.append(trnresult)
+            tsty.append(tstresult)
 
-        # draw graph
-        graph.addData(0, i+1, trnresult)
-        graph.addData(1, i+1, tstresult)
-        graph.update()
-        draw()
+            # draw graph
+            graph.addData(0, i+1, trnresult)
+            graph.addData(1, i+1, tstresult)
+            graph.update()
+            draw()
 
     # save log
     f = csv.writer(open(_logpath, 'w'))
+    # timer
+    f.writerow(['read', readt.secs])
+    f.writerow(['training and test(sec)', traint.secs])
     # data prop
     f.writerow(['train data num', len(trndata)])
     f.writerow(['test data num', len(tstdata)])
@@ -149,3 +155,29 @@ def runNN():
     f.writerow(['epoch', 'train_err', 'test_err'])
     f.writerows([[trainx[r], trny[r], tsty[r]] for r in range(len(trainx))])
     #f.close()
+
+class Timer(object):
+    '''
+    Timer class, usage bellow
+
+    with Timer() as t:
+        rdb.lpush("foo", "bar")
+    print "=> elasped lpush: %s s" % t.secs
+
+    ref
+    http://yakst.com/ja/posts/42
+    '''
+
+    def __init__(self, verbose=False):
+        self.verbose = verbose
+
+    def __enter__(self):
+        self.start = time.time()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.time()
+        self.secs = self.end - self.start
+        self.msecs = self.secs * 1000  # millisecs
+        if self.verbose:
+            print 'elapsed time: %f ms' % self.msecs
